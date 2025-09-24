@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import type { PredictionOutput, SensorReading, Zone } from '@shared/api';
-import { connectStream } from '@/lib/api';
+import { connectStream, indexSensorHealth } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { SensorPanel } from '@/components/dashboard/SensorPanel';
 import { ForecastChart } from '@/components/dashboard/ForecastChart';
@@ -15,6 +16,8 @@ export default function Sensors() {
   const [zones, setZones] = useState<Zone[]>([]);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const [sensorHistory, setSensorHistory] = useState<Record<string, SensorPoint[]>>({});
+  const [sensorHealth, setSensorHealth] = useState<Record<string, any>>({});
+  const { toast } = useToast();
 
   useEffect(() => {
     const disconnect = connectStream(msg => {
@@ -30,6 +33,30 @@ export default function Sensors() {
         });
       }
       if (msg.type === 'zones') setZones(msg.payload);
+      if (msg.type === 'sensor_health') {
+        setSensorHealth(prev => {
+          const indexed = indexSensorHealth(msg.payload);
+            // detect transitions to Faulty/Inactive
+          Object.values(indexed).forEach(s => {
+            const before = prev[s.sensor_id];
+            if (before && before.status !== s.status) {
+              if (s.status === 'Faulty' || s.status === 'Inactive') {
+                toast({
+                  title: `Sensor ${s.sensor_id} ${s.status}`,
+                  description: `Status change in zone ${s.zone_id}`,
+                  variant: 'destructive'
+                });
+              } else if (before.status === 'Faulty' && s.status === 'Active') {
+                toast({
+                  title: `Sensor ${s.sensor_id} restored`,
+                  description: `Back to Active in zone ${s.zone_id}`
+                });
+              }
+            }
+          });
+          return { ...prev, ...indexed };
+        });
+      }
     });
     return () => disconnect();
   }, []);

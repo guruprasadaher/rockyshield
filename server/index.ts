@@ -5,6 +5,7 @@ import { handleDemo } from "./routes/demo";
 import { streamHandler } from "./routes/stream";
 import { handlePredict } from "./routes/predict";
 import { listEvents, exportCsv } from "./routes/events";
+import { listSensors, sensorStats, sensorsCsv } from "./routes/sensors";
 import { handleEvacuationAlerts } from "./routes/evacuationAlerts";
 import { handleRiskAssessment } from "./routes/riskAssessment";
 import { json } from "express";
@@ -38,6 +39,9 @@ export function createServer() {
   app.get("/api/risk-assessment", handleRiskAssessment);
   app.get("/api/events", listEvents);
   app.get("/api/events.csv", exportCsv);
+  app.get("/api/sensors", listSensors);
+  app.get("/api/sensor-stats", sensorStats);
+  app.get("/api/sensors.csv", sensorsCsv);
   app.post("/api/site", json(), (req, res) => {
     const body = req.body as CreateSiteRequest;
     if (!body || typeof body.name !== 'string' || typeof body.lat !== 'number' || typeof body.lng !== 'number') {

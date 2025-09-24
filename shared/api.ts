@@ -128,6 +128,29 @@ export interface ComplianceEvent {
   supervisor_action?: string;    // Optional action logged by supervisor
   status: "Ongoing" | "Resolved"; // Event lifecycle state
   severity: RiskLevel;           // Mirrors alert level at creation
+  sensors_used?: SensorDeviceSnapshot[]; // Sensors contributing at detection
+}
+
+// Sensor device tracking
+export type SensorStatus = "Active" | "Inactive" | "Faulty" | "Maintenance";
+
+export interface SensorDevice {
+  sensor_id: string;
+  type: string; // vibration, acoustic, motion, weather...
+  zone_id: string;
+  status: SensorStatus;
+  last_heartbeat: number; // ms epoch
+  created_at: number;
+  active_ms: number; // accumulated uptime
+  total_ms: number;  // accumulated observation window
+}
+
+export interface SensorDeviceSnapshot {
+  sensor_id: string;
+  type: string;
+  status: SensorStatus;
+  last_heartbeat: string; // ISO
+  zone_id: string;
 }
 
 export type StreamMessage =
@@ -136,7 +159,8 @@ export type StreamMessage =
   | { type: "alert"; payload: AlertItem }
   | { type: "zones"; payload: Zone[] }
   | { type: "worker"; payload: WorkerTag }
-  | { type: "occupancy"; payload: ZoneOccupancy[] };
+  | { type: "occupancy"; payload: ZoneOccupancy[] }
+  | { type: "sensor_health"; payload: SensorDeviceSnapshot[] };
 
 // Ingest payloads
 export interface IngestDEM {

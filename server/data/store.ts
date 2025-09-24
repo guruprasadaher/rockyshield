@@ -1,4 +1,4 @@
-import { AlertItem, ComplianceEvent, EvacuationRoute, IngestDEM, PredictionOutput, RiskLevel, SafeExit, SensorReading, WorkerTag, Zone, ZoneOccupancy } from "@shared/api";
+import { AlertItem, ComplianceEvent, EvacuationRoute, IngestDEM, PredictionOutput, RiskLevel, SafeExit, SensorReading, WorkerTag, Zone, ZoneOccupancy, SensorDevice, SensorDeviceSnapshot, SensorStatus } from "@shared/api";
 
 // In-memory store (replace with database in production)
 class Store {
@@ -11,6 +11,7 @@ class Store {
   events: ComplianceEvent[] = [];
   safeExits: SafeExit[] = [];
   workers: Record<string, WorkerTag> = {};
+  sensors: SensorDevice[] = [];
 
   seed() {
     if (this.zones.length) return;
@@ -71,6 +72,14 @@ class Store {
       w3: { id: "w3", name: "Surveyor B", type: "ble", lastSeen: Date.now(), location: { lat: -24.6, lng: 135.112 } },
     };
     this.updateWorkerZones();
+    // Seed sensors
+    const now = Date.now();
+    this.sensors = [
+      { sensor_id: 'S101', type: 'vibration', zone_id: 'z1', status: 'Active', last_heartbeat: now, created_at: now, active_ms: 0, total_ms: 0 },
+      { sensor_id: 'S102', type: 'acoustic', zone_id: 'z1', status: 'Active', last_heartbeat: now, created_at: now, active_ms: 0, total_ms: 0 },
+      { sensor_id: 'S201', type: 'weather', zone_id: 'z2', status: 'Active', last_heartbeat: now, created_at: now, active_ms: 0, total_ms: 0 },
+      { sensor_id: 'S301', type: 'motion', zone_id: 'z3', status: 'Active', last_heartbeat: now, created_at: now, active_ms: 0, total_ms: 0 },
+    ];
   }
 
   updateFromDEM(payload: IngestDEM) {
@@ -206,6 +215,7 @@ class Store {
       supervisor_action: undefined,
       status: "Ongoing",
       severity: alert.level,
+      sensors_used: this.sensors.filter(s => s.zone_id === alert.zoneId).map(s => this.sensorSnapshot(s))
     };
     this.events.unshift(event); // newest first, immutable append
   }
@@ -219,6 +229,41 @@ class Store {
       this.events.unshift(resolved);
     }
   }
+
+  updateSensorHeartbeats(deltaMs: number) {
+    const now = Date.now();
+    this.sensors.forEach(s => {
+      s.total_ms += deltaMs;
+      if (s.status === 'Active') s.active_ms += deltaMs;
+      // simulate heartbeat drop randomly
+      if (Math.random() < 0.01) {
+        // 1% chance to flip status
+        s.status = randomStatus(s.status);
+      }
+      if (s.status === 'Active') s.last_heartbeat = now;
+    });
+  }
+
+  sensorSnapshot(s: SensorDevice): SensorDeviceSnapshot {
+    return { sensor_id: s.sensor_id, type: s.type, status: s.status, last_heartbeat: new Date(s.last_heartbeat).toISOString(), zone_id: s.zone_id };
+  }
+
+  getSensorStats() {
+    const total = this.sensors.length;
+    const active = this.sensors.filter(s => s.status === 'Active').length;
+    const faulty = this.sensors.filter(s => s.status === 'Faulty').length;
+    const maintenance = this.sensors.filter(s => s.status === 'Maintenance').length;
+    const avgUptime = total ? this.sensors.reduce((a,b)=> a + (b.total_ms ? b.active_ms / b.total_ms : 0),0)/ total : 0;
+    return { total, active, faulty, maintenance, average_uptime: avgUptime };
+  }
+}
+
+function randomStatus(prev: SensorStatus): SensorStatus {
+  const r = Math.random();
+  if (r < 0.7) return 'Active';
+  if (r < 0.82) return 'Faulty';
+  if (r < 0.92) return 'Maintenance';
+  return 'Inactive';
 }
 
 function polyCentroid(poly: { lat: number; lng: number }[]): { lat: number; lng: number } {

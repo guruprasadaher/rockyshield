@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ComplianceEvent } from '@shared/api';
-import { fetchEvents, downloadCsv, EventsQuery } from '@/lib/api';
+import { fetchEvents, downloadCsv, EventsQuery, fetchSensorStats, fetchSensors, SensorListItem, downloadSensorsCsv } from '@/lib/api';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +11,30 @@ export default function Reports() {
   const [query, setQuery] = useState<EventsQuery>({});
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: keyof ComplianceEvent; dir: 'asc' | 'desc' }>({ key: 'timestamp', dir: 'desc' });
+  const [sensorStats, setSensorStats] = useState<{ total: number; byStatus: Record<string, number>; averageUptimePct: number } | null>(null);
+  const [sensors, setSensors] = useState<SensorListItem[]>([]);
+  const [sensorSort, setSensorSort] = useState<{ key: keyof SensorListItem; dir: 'asc' | 'desc' }>({ key: 'sensor_id', dir: 'asc' });
+
+  const refreshSensors = async () => {
+    try {
+      setSensorStats(await fetchSensorStats());
+      setSensors(await fetchSensors());
+    } catch (e) {
+      console.warn('Failed refreshing sensors', e);
+    }
+  };
+
+  const toggleSensorSort = (k: keyof SensorListItem) => {
+    setSensorSort(s => s.key === k ? { key: k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: 'asc' });
+  };
+
+  const sortedSensors = useMemo(() => {
+    return [...sensors].sort((a,b) => {
+      const av = a[sensorSort.key]; const bv = b[sensorSort.key];
+      if (av === bv) return 0;
+      return (av as any) > (bv as any) ? (sensorSort.dir === 'asc' ? 1 : -1) : (sensorSort.dir === 'asc' ? -1 : 1);
+    });
+  }, [sensors, sensorSort]);
 
   async function load() {
     setLoading(true); setError(null);
@@ -19,6 +43,16 @@ export default function Reports() {
   }
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [JSON.stringify(query)]);
+  useEffect(() => {
+    (async () => {
+      try {
+        setSensorStats(await fetchSensorStats());
+        setSensors(await fetchSensors());
+      } catch (e) {
+        console.warn('Failed loading sensor stats', e);
+      }
+    })();
+  }, []);
 
   function toggleSort(k: keyof ComplianceEvent) {
     setSort(s => s.key === k ? { key: k, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key: k, dir: 'asc' });
@@ -64,16 +98,42 @@ export default function Reports() {
         <p className="text-sm text-muted-foreground">Immutable log of high-risk events for audit, investigation and response analytics.</p>
       </div>
 
-      <Card>
-        <CardContent className="pt-4">
-          <div className="grid sm:grid-cols-4 gap-4 text-center">
-            <Stat label="Total Events" value={stats.total} />
-            <Stat label="Resolved" value={stats.resolved} />
-            <Stat label="Ongoing" value={stats.ongoing} />
-            <Stat label="Avg Response" value={stats.avgResponseMs ? formatDuration(stats.avgResponseMs) : '—'} />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardContent className="pt-4">
+            <div className="grid sm:grid-cols-4 gap-4 text-center">
+              <Stat label="Total Events" value={stats.total} />
+              <Stat label="Resolved" value={stats.resolved} />
+              <Stat label="Ongoing" value={stats.ongoing} />
+              <Stat label="Avg Response" value={stats.avgResponseMs ? formatDuration(stats.avgResponseMs) : '—'} />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-4">
+            <h2 className="text-sm font-semibold mb-3">Sensor Health</h2>
+            {sensorStats ? (
+              <div className="grid sm:grid-cols-3 gap-4 text-center">
+                <Stat label="Total Sensors" value={sensorStats.total} />
+                <Stat label="Active" value={sensorStats.byStatus['Active'] || 0} />
+                <Stat label="Fault/Inactive" value={(sensorStats.byStatus['Faulty']||0) + (sensorStats.byStatus['Inactive']||0)} />
+                <Stat label="Maintenance" value={sensorStats.byStatus['Maintenance'] || 0} />
+                <Stat label="Avg Uptime" value={((sensorStats.averageUptimePct||0)*100).toFixed(1) + '%'} />
+                <div className="p-3 rounded-md bg-muted/50 flex flex-col justify-center">
+                  <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Health Index</div>
+                  <div className="text-lg font-semibold mt-1">
+                    {healthIndex(sensorStats).toFixed(0)}
+                  </div>
+                </div>
+              </div>
+            ) : <div className="text-xs text-muted-foreground">Loading sensor stats…</div>}
+            <div className="mt-4 flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => refreshSensors()}>Refresh</Button>
+              <Button size="sm" variant="secondary" onClick={() => downloadSensorsCsv()}>Export Sensors CSV</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardContent className="pt-4 space-y-4">
@@ -115,7 +175,7 @@ export default function Reports() {
               </thead>
               <tbody>
                 {sorted.map(ev => (
-                  <tr key={ev.event_id} className="border-b last:border-b-0 hover:bg-muted/30">
+                  <tr key={ev.event_id} className="border-b last:border-b-0 hover:bg-muted/30 align-top">
                     <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{ev.event_id}</td>
                     <td className="px-3 py-2 text-xs whitespace-nowrap">{new Date(ev.timestamp).toLocaleString()}</td>
                     <td className="px-3 py-2 text-xs">{ev.zone_id}</td>
@@ -135,7 +195,23 @@ export default function Reports() {
                     <td className="px-3 py-2 text-xs">
                       <span className={ev.status === 'Resolved' ? 'text-emerald-600 font-medium' : 'text-amber-600 font-medium'}>{ev.status}</span>
                     </td>
-                    <td className="px-3 py-2 text-xs max-w-[200px] truncate" title={ev.supervisor_action}>{ev.supervisor_action || '—'}</td>
+                    <td className="px-3 py-2 text-xs max-w-[260px]">
+                      <div className="truncate" title={ev.supervisor_action}>{ev.supervisor_action || '—'}</div>
+                      {ev.sensors_used && ev.sensors_used.length > 0 && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-[11px] text-muted-foreground">{ev.sensors_used.length} sensor(s)</summary>
+                          <div className="mt-1 max-h-40 overflow-auto pr-1 space-y-0.5">
+                            {ev.sensors_used.map(s => (
+                              <div key={s.sensor_id} className="flex items-center justify-between gap-2 text-[11px] font-mono">
+                                <span>{s.sensor_id}</span>
+                                <span className="text-xs">{s.type}</span>
+                                <span className={sensorStatusBadge(s.status)}>{s.status}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {sorted.length === 0 && !loading && (
@@ -143,6 +219,38 @@ export default function Reports() {
                 )}
               </tbody>
             </table>
+          </div>
+          <div className="mt-10">
+            <h2 className="text-sm font-semibold mb-3">Sensors Inventory</h2>
+            <div className="overflow-x-auto border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    {['sensor_id','type','zone_id','status','last_heartbeat','uptime_pct'].map(col => (
+                      <th key={col} onClick={() => toggleSensorSort(col as keyof SensorListItem)} className="px-3 py-2 text-left text-[11px] uppercase tracking-wide font-semibold cursor-pointer select-none">
+                        {col}
+                        {sensorSort.key === col && <span className="ml-1 text-[10px]">{sensorSort.dir === 'asc' ? '▲' : '▼'}</span>}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedSensors.map(s => (
+                    <tr key={s.sensor_id} className="border-b last:border-b-0 hover:bg-muted/30">
+                      <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{s.sensor_id}</td>
+                      <td className="px-3 py-2 text-xs">{s.type}</td>
+                      <td className="px-3 py-2 text-xs">{s.zone_id}</td>
+                      <td className="px-3 py-2 text-xs"><span className={sensorStatusBadge(s.status)}>{s.status}</span></td>
+                      <td className="px-3 py-2 text-xs whitespace-nowrap">{new Date(s.last_heartbeat).toLocaleTimeString()}</td>
+                      <td className="px-3 py-2 text-xs">{(s.uptime_pct*100).toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                  {sortedSensors.length === 0 && (
+                    <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-muted-foreground">No sensors.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -183,3 +291,29 @@ function formatDuration(ms: number) {
   if (mins < 1) return (ms/1000).toFixed(1) + 's';
   return mins.toFixed(1) + 'm';
 }
+
+function sensorStatusBadge(status: string) {
+  const base = 'inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium';
+  switch(status) {
+    case 'Active': return base + ' bg-emerald-500 text-white';
+    case 'Faulty': return base + ' bg-orange-500 text-white';
+    case 'Inactive': return base + ' bg-gray-400 text-white';
+    case 'Maintenance': return base + ' bg-blue-500 text-white';
+    default: return base + ' bg-slate-300 text-black';
+  }
+}
+
+function healthIndex(stats: { total: number; byStatus: Record<string, number>; averageUptimePct: number }) {
+  if (!stats.total) return 0;
+  const activeRatio = (stats.byStatus['Active']||0)/stats.total;
+  const faultPenalty = (stats.byStatus['Faulty']||0) * 0.5 / stats.total;
+  const inactivePenalty = (stats.byStatus['Inactive']||0) * 0.3 / stats.total;
+  const maintAdj = (stats.byStatus['Maintenance']||0) * 0.1 / stats.total; // small penalty
+  const base = activeRatio - faultPenalty - inactivePenalty - maintAdj;
+  const uptime = stats.averageUptimePct; // 0..1
+  return Math.max(0, Math.min(100, (base * 0.6 + uptime * 0.4) * 100));
+}
+
+// ===== Sensor table sorting helpers =====
+  return (k: keyof SensorListItem) => {
+

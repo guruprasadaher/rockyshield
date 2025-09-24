@@ -1,6 +1,6 @@
 import { RequestHandler } from "express";
 import { store } from "../data/store";
-import { SensorReading, StreamMessage, WorkerTag } from "@shared/api";
+import { SensorReading, StreamMessage, WorkerTag, SensorDeviceSnapshot } from "@shared/api";
 
 const clients: { id: number; res: any }[] = [];
 let interval: NodeJS.Timeout | null = null;
@@ -38,6 +38,7 @@ export const streamHandler: RequestHandler = (req, res) => {
   if (!interval) {
     // main update loop
     interval = setInterval(() => {
+      const loopStart = Date.now();
       // Simulate sensor readings per zone
       for (const z of store.zones) {
         const last = store.latestSensors[z.id];
@@ -96,6 +97,34 @@ export const streamHandler: RequestHandler = (req, res) => {
           const ongoing = store.events.find(e => e.zone_id === z.id && e.status === "Ongoing");
           if (ongoing) {
             store.resolveZoneEvent(z.id);
+          }
+        }
+      });
+
+      // Update sensor devices health and broadcast snapshots occasionally
+      const delta = 4000; // loop interval ms
+      store.updateSensorHeartbeats(delta);
+      const snapshots: SensorDeviceSnapshot[] = store.sensors.map(s => store.sensorSnapshot(s));
+      streamBroadcast({ type: 'sensor_health', payload: snapshots } as any);
+
+      // Maintenance/fault alerts (throttle: only once per 5 min per sensor)
+      const now = Date.now();
+      snapshots.forEach(s => {
+        if (s.status === 'Faulty' || s.status === 'Inactive') {
+          const already = store.alerts.find(a => a.zoneId === s.zone_id && a.message.includes(s.sensor_id) && now - a.timestamp < 300_000);
+          if (!already) {
+            const alert = {
+              id: `${s.sensor_id}-${now}`,
+              zoneId: s.zone_id,
+              level: 'medium' as const,
+              message: `Sensor ${s.sensor_id} (${s.type}) ${s.status === 'Faulty' ? 'fault detected' : 'inactive/no heartbeat'}`,
+              actions: ['Dispatch maintenance crew','Verify power and connectivity'],
+              timestamp: now
+            };
+            store.alerts.unshift(alert);
+            streamBroadcast({ type: 'alert', payload: alert });
+            // Log as compliance event (non-high severity) for audit (reuse log but severity medium)
+            store.logAlertEvent(alert);
           }
         }
       });

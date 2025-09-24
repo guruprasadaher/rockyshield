@@ -1,4 +1,4 @@
-import type { AlertItem, PredictionOutput, SensorReading, StreamMessage, WorkerTag, Zone, ZoneOccupancy, EvacuationAlert, RiskAssessmentItem, CreateSiteRequest, CreateSiteResponse } from "@shared/api";
+import type { AlertItem, PredictionOutput, SensorReading, StreamMessage, WorkerTag, Zone, ZoneOccupancy, EvacuationAlert, RiskAssessmentItem, CreateSiteRequest, CreateSiteResponse, SensorDeviceSnapshot } from "@shared/api";
 import { ComplianceEvent } from "@shared/api";
 
 // Robust SSE connection with automatic reconnect/backoff
@@ -118,3 +118,48 @@ export type LiveState = {
   predictions: PredictionOutput[];
   alerts: AlertItem[];
 };
+
+// ==== Sensor Health APIs ====
+export interface SensorListItem {
+  sensor_id: string;
+  type: string;
+  zone_id: string;
+  status: string; // SensorStatus but keep generic to avoid extra export
+  last_heartbeat: number;
+  uptime_pct: number; // 0..1
+}
+
+export interface SensorStatsResponse {
+  total: number;
+  byStatus: Record<string, number>;
+  averageUptimePct: number; // 0..1
+}
+
+export async function fetchSensors(): Promise<SensorListItem[]> {
+  const res = await fetch('/api/sensors');
+  if (!res.ok) throw new Error('Failed to fetch sensors');
+  const data = await res.json();
+  return data.sensors as SensorListItem[];
+}
+
+export async function fetchSensorStats(): Promise<SensorStatsResponse> {
+  const res = await fetch('/api/sensor-stats');
+  if (!res.ok) throw new Error('Failed to fetch sensor stats');
+  return res.json();
+}
+
+export function downloadSensorsCsv() {
+  const a = document.createElement('a');
+  a.href = '/api/sensors.csv';
+  a.download = 'sensors.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+// Helper to merge sensor_health SSE messages into a snapshot map
+export function indexSensorHealth(snapshots: SensorDeviceSnapshot[]): Record<string, SensorDeviceSnapshot> {
+  const map: Record<string, SensorDeviceSnapshot> = {};
+  for (const s of snapshots) map[s.sensor_id] = s;
+  return map;
+}
