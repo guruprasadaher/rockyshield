@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import History from "./pages/History";
+import Sensors from "./pages/Sensors";
 import Supervisor from "./pages/Supervisor";
 import Reports from "./pages/Reports";
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -28,6 +29,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/history" element={<History />} />
+              <Route path="/sensors" element={<Sensors />} />
               <Route path="/supervisor" element={<Supervisor />} />
               <Route path="/reports" element={<Reports />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -11,6 +11,7 @@ export function SiteHeader() {
   const nav = [
     { to: "/", label: "Dashboard" },
     { to: "/history", label: "History" },
+    { to: "/sensors", label: "Sensors" },
     { to: "/supervisor", label: "Supervisor" },
     { to: "/reports", label: "Reports" },
   ];
