@@ -7,7 +7,6 @@ import { ForecastChart } from "@/components/dashboard/ForecastChart";
 import { AlertsList } from "@/components/dashboard/AlertsList";
 import { EvacuationAssistant } from "@/components/dashboard/EvacuationAssistant";
 import { WorkerPanel } from "@/components/dashboard/WorkerPanel";
-import { SiteHeader } from "@/components/layout/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -38,7 +37,7 @@ export default function Index() {
   }, []);
 
   const overall = useMemo(() => {
-    const last = predictions.at(-1);
+    const last = predictions.slice(-1)[0];
     if (!last) return { avg: 0, high: 0, barricade: false };
     const probs = last.zones.map((z) => z.probability);
     return { avg: probs.reduce((a, b) => a + b, 0) / probs.length, high: last.zones.filter((z) => z.risk === "high").length, barricade: !!last.flags?.barricade };
@@ -46,8 +45,7 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-background">
-      <SiteHeader />
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <main className="px-4 py-6 space-y-6">
         <div className="grid md:grid-cols-3 gap-4">
           <Card className="md:col-span-2">
             <CardContent className="pt-4">
@@ -116,5 +114,6 @@ export default function Index() {
 }
 
 function latestZones(predictions: PredictionOutput[]): Zone[] {
-  return predictions.at(-1)?.zones ?? [];
+  const last = predictions.slice(-1)[0];
+  return last ? last.zones : [];
 }
