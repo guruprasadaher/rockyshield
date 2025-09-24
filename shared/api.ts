@@ -88,6 +88,15 @@ export interface AlertItem {
   timestamp: number;
 }
 
+// Personalized evacuation alert for a worker
+export interface EvacuationAlert {
+  worker_id: string;
+  message: string; // Short life-saving instruction
+  evacuation_route: LatLng[]; // Ordered polyline
+  urgency: "High" | "Medium" | "Low";
+  language: string; // ISO code e.g., 'en'
+}
+
 export type StreamMessage =
   | { type: "sensor"; payload: SensorReading }
   | { type: "prediction"; payload: PredictionOutput }

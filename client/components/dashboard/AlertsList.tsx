@@ -11,7 +11,7 @@ export function AlertsList({ alerts }: Props) {
       <CardHeader className="pb-2">
         <CardTitle className="text-sm">Alerts</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 h-64 overflow-y-auto rounded-md border border-gray-200 bg-white p-4">
         {alerts.length === 0 && (
           <div className="text-xs text-muted-foreground">No alerts</div>
         )}

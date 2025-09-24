@@ -4,6 +4,7 @@ import cors from "cors";
 import { handleDemo } from "./routes/demo";
 import { streamHandler } from "./routes/stream";
 import { handlePredict } from "./routes/predict";
+import { handleEvacuationAlerts } from "./routes/evacuationAlerts";
 import { ingestDEM, ingestDrone, ingestEnv, ingestGeotech, ingestWorker } from "./routes/ingest";
 import { listAlerts, sendAlert } from "./routes/alerts";
 
@@ -28,6 +29,7 @@ export function createServer() {
 
   // Prediction
   app.get("/api/predict", handlePredict);
+  app.get("/api/evacuation-alerts", handleEvacuationAlerts);
 
   // Ingestion endpoints
   app.post("/api/ingest/dem", ingestDEM);
