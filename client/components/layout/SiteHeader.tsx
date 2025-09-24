@@ -48,7 +48,7 @@ export function SiteHeader() {
       <div className="flex items-center gap-2 px-4 h-14 border-b">
         <Link to="/" className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-md bg-gradient-to-br from-primary to-teal-500 shadow" />
-          <span className="font-extrabold tracking-tight text-lg">RockShield</span>
+          <span className="font-extrabold tracking-tight text-lg">MineKavach</span>
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3 text-sm">
