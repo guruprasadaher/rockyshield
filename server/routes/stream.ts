@@ -21,7 +21,7 @@ export const streamHandler: RequestHandler = (req, res) => {
   clients.push({ id, res });
 
   // Send initial zones state
-  send({ type: "zones", payload: store.zones });
+  streamBroadcast({ type: "zones", payload: store.zones });
 
   // send a comment to establish the stream
   res.write(': connected\n\n');
@@ -52,11 +52,11 @@ export const streamHandler: RequestHandler = (req, res) => {
           vibration: Math.max(0, randn(0.2, 0.6)),
         };
         store.latestSensors[z.id] = reading;
-        send({ type: "sensor", payload: reading });
+  streamBroadcast({ type: "sensor", payload: reading });
       }
 
       const prediction = store.predict(Date.now());
-      send({ type: "prediction", payload: prediction });
+  streamBroadcast({ type: "prediction", payload: prediction });
 
       // Occupancy updates (simulate worker drift)
       for (const id in store.workers) {
@@ -67,9 +67,9 @@ export const streamHandler: RequestHandler = (req, res) => {
           lastSeen: Date.now(),
         };
         store.updateWorker(drift);
-        send({ type: "worker", payload: drift });
+  streamBroadcast({ type: "worker", payload: drift });
       }
-      send({ type: "occupancy", payload: store.getOccupancy() });
+  streamBroadcast({ type: "occupancy", payload: store.getOccupancy() });
 
       // Alerts
       prediction.zones.forEach((z) => {
@@ -86,7 +86,16 @@ export const streamHandler: RequestHandler = (req, res) => {
               timestamp: Date.now(),
             };
             store.alerts.unshift(alert);
-            send({ type: "alert", payload: alert });
+            streamBroadcast({ type: "alert", payload: alert });
+            // compliance log entry
+            store.logAlertEvent(alert);
+          }
+        }
+        // detect resolution: if zone currently medium/low but had an ongoing event
+        if (z.risk !== "high") {
+          const ongoing = store.events.find(e => e.zone_id === z.id && e.status === "Ongoing");
+          if (ongoing) {
+            store.resolveZoneEvent(z.id);
           }
         }
       });
@@ -99,7 +108,7 @@ export const streamHandler: RequestHandler = (req, res) => {
   }
 };
 
-function send(msg: StreamMessage) {
+export function streamBroadcast(msg: StreamMessage) {
   const data = `data: ${JSON.stringify(msg)}\n\n`;
   clients.forEach((c) => c.res.write(data));
 }

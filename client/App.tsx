@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import History from "./pages/History";
 import Supervisor from "./pages/Supervisor";
+import Reports from "./pages/Reports";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/history" element={<History />} />
               <Route path="/supervisor" element={<Supervisor />} />
+              <Route path="/reports" element={<Reports />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

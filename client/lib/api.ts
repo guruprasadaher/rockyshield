@@ -1,4 +1,5 @@
-import type { AlertItem, PredictionOutput, SensorReading, StreamMessage, WorkerTag, Zone, ZoneOccupancy, EvacuationAlert, RiskAssessmentItem } from "@shared/api";
+import type { AlertItem, PredictionOutput, SensorReading, StreamMessage, WorkerTag, Zone, ZoneOccupancy, EvacuationAlert, RiskAssessmentItem, CreateSiteRequest, CreateSiteResponse } from "@shared/api";
+import { ComplianceEvent } from "@shared/api";
 
 // Robust SSE connection with automatic reconnect/backoff
 export function connectStream(onMessage: (msg: StreamMessage) => void) {
@@ -69,6 +70,46 @@ export async function fetchEvacuationAlerts(): Promise<EvacuationAlert[]> {
 export async function fetchRiskAssessment(): Promise<RiskAssessmentItem[]> {
   const res = await fetch("/api/risk-assessment");
   return res.json();
+}
+
+export async function createSite(payload: CreateSiteRequest): Promise<CreateSiteResponse> {
+  const res = await fetch('/api/site', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Failed to create site');
+  return res.json();
+}
+
+export interface EventsQuery {
+  zone?: string;
+  worker?: string;
+  status?: string;
+  severity?: string;
+  from?: string;
+  to?: string;
+}
+
+export async function fetchEvents(q: EventsQuery = {}): Promise<ComplianceEvent[]> {
+  const params = new URLSearchParams();
+  Object.entries(q).forEach(([k, v]) => { if (v) params.set(k, v); });
+  const res = await fetch(`/api/events?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch events");
+  const data = await res.json();
+  return data.events;
+}
+
+export function downloadCsv(q: EventsQuery = {}) {
+  const params = new URLSearchParams();
+  Object.entries(q).forEach(([k, v]) => { if (v) params.set(k, v); });
+  const url = `/api/events.csv?${params.toString()}`;
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'events.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 export type LiveState = {

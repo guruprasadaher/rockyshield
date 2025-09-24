@@ -1,4 +1,4 @@
-import { AlertItem, EvacuationRoute, IngestDEM, PredictionOutput, RiskLevel, SafeExit, SensorReading, WorkerTag, Zone, ZoneOccupancy } from "@shared/api";
+import { AlertItem, ComplianceEvent, EvacuationRoute, IngestDEM, PredictionOutput, RiskLevel, SafeExit, SensorReading, WorkerTag, Zone, ZoneOccupancy } from "@shared/api";
 
 // In-memory store (replace with database in production)
 class Store {
@@ -7,6 +7,8 @@ class Store {
   crackIndex: Record<string, number> = {};
   latestSensors: Record<string, SensorReading> = {};
   alerts: AlertItem[] = [];
+  // Immutable compliance events log
+  events: ComplianceEvent[] = [];
   safeExits: SafeExit[] = [];
   workers: Record<string, WorkerTag> = {};
 
@@ -189,6 +191,33 @@ class Store {
         "Inspect drainage and catch berms"
       ];
     return ["Routine inspection"];
+  }
+
+  logAlertEvent(alert: AlertItem) {
+    // Determine current workers in the zone at alert time
+    const workersInZone = Object.values(this.workers).filter(w => w.zoneId === alert.zoneId);
+    const timestamp = new Date(alert.timestamp).toISOString();
+    const event: ComplianceEvent = {
+      event_id: `E${alert.id}`,
+      timestamp,
+      zone_id: alert.zoneId,
+      workers_alerted: workersInZone.map(w => w.id),
+      alert_delivery_time: Object.fromEntries(workersInZone.map(w => [w.id, timestamp])),
+      supervisor_action: undefined,
+      status: "Ongoing",
+      severity: alert.level,
+    };
+    this.events.unshift(event); // newest first, immutable append
+  }
+
+  resolveZoneEvent(zoneId: string) {
+    // find most recent ongoing event for zone and mark as resolved (immutably by adding a new record?)
+    const last = this.events.find(e => e.zone_id === zoneId && e.status === "Ongoing");
+    if (last) {
+      // create a resolved shadow entry to keep immutability of previous state
+      const resolved: ComplianceEvent = { ...last, status: "Resolved", event_id: last.event_id + "R", timestamp: new Date().toISOString() };
+      this.events.unshift(resolved);
+    }
   }
 }
 

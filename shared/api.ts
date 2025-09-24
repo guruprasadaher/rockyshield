@@ -105,6 +105,31 @@ export interface RiskAssessmentItem {
   recommended_action: "Evacuate immediately" | "Monitor" | "Safe";
 }
 
+// Create site/zone request
+export interface CreateSiteRequest {
+  name: string;
+  lat: number;
+  lng: number;
+  radiusMeters?: number; // optional convenience circle to polygon
+}
+
+export interface CreateSiteResponse {
+  id: string;
+  zone: Zone;
+}
+
+// Compliance / audit event (immutable record)
+export interface ComplianceEvent {
+  event_id: string;              // Unique stable ID
+  timestamp: string;             // ISO time of detection / creation
+  zone_id: string;               // Affected zone
+  workers_alerted: string[];     // Worker IDs notified
+  alert_delivery_time: Record<string, string>; // workerId -> ISO timestamp delivered
+  supervisor_action?: string;    // Optional action logged by supervisor
+  status: "Ongoing" | "Resolved"; // Event lifecycle state
+  severity: RiskLevel;           // Mirrors alert level at creation
+}
+
 export type StreamMessage =
   | { type: "sensor"; payload: SensorReading }
   | { type: "prediction"; payload: PredictionOutput }
