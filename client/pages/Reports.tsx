@@ -315,5 +315,5 @@ function healthIndex(stats: { total: number; byStatus: Record<string, number>; a
 }
 
 // ===== Sensor table sorting helpers =====
-  return (k: keyof SensorListItem) => {
+// (helper removed – handled inline where needed)
 
