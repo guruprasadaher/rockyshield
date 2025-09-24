@@ -7,6 +7,7 @@ export function SiteHeader() {
   const nav = [
     { to: "/", label: "Dashboard" },
     { to: "/history", label: "History" },
+    { to: "/supervisor", label: "Supervisor" },
   ];
   return (
     <header className="sticky top-0 z-40 bg-white/80 dark:bg-black/50 backdrop-blur border-b">

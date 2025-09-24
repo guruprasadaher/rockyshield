@@ -1,4 +1,4 @@
-import type { AlertItem, PredictionOutput, SensorReading, StreamMessage, WorkerTag, Zone, ZoneOccupancy, EvacuationAlert } from "@shared/api";
+import type { AlertItem, PredictionOutput, SensorReading, StreamMessage, WorkerTag, Zone, ZoneOccupancy, EvacuationAlert, RiskAssessmentItem } from "@shared/api";
 
 // Robust SSE connection with automatic reconnect/backoff
 export function connectStream(onMessage: (msg: StreamMessage) => void) {
@@ -63,6 +63,11 @@ export async function fetchAlerts(): Promise<AlertItem[]> {
 
 export async function fetchEvacuationAlerts(): Promise<EvacuationAlert[]> {
   const res = await fetch("/api/evacuation-alerts");
+  return res.json();
+}
+
+export async function fetchRiskAssessment(): Promise<RiskAssessmentItem[]> {
+  const res = await fetch("/api/risk-assessment");
   return res.json();
 }
 

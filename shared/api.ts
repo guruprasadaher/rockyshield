@@ -97,6 +97,14 @@ export interface EvacuationAlert {
   language: string; // ISO code e.g., 'en'
 }
 
+// Supervisor risk ranking item
+export interface RiskAssessmentItem {
+  zone_id: string;
+  risk_score: number; // 0-100
+  workers_at_risk: number;
+  recommended_action: "Evacuate immediately" | "Monitor" | "Safe";
+}
+
 export type StreamMessage =
   | { type: "sensor"; payload: SensorReading }
   | { type: "prediction"; payload: PredictionOutput }
