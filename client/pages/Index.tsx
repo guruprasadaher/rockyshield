@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { AlertItem, PredictionOutput, SensorReading, WorkerTag, Zone, ZoneOccupancy } from "@shared/api";
 import { connectStream, fetchAlerts } from "@/lib/api";
 import { RiskMap } from "@/components/dashboard/RiskMap";
-import { SensorPanel } from "@/components/dashboard/SensorPanel";
 import { ForecastChart } from "@/components/dashboard/ForecastChart";
 import { AlertsList } from "@/components/dashboard/AlertsList";
 import { EvacuationAssistant } from "@/components/dashboard/EvacuationAssistant";
@@ -12,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function Index() {
   const [zones, setZones] = useState<Zone[]>([]);
+  // Sensor readings moved to dedicated Sensors page
   const [latestSensors, setLatestSensors] = useState<Record<string, SensorReading>>({});
   const [predictions, setPredictions] = useState<PredictionOutput[]>([]);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -23,7 +23,7 @@ export default function Index() {
   useEffect(() => {
     const disconnect = connectStream((msg) => {
       if (msg.type === "zones") setZones(msg.payload);
-      if (msg.type === "sensor") setLatestSensors((s) => ({ ...s, [msg.payload.zoneId]: msg.payload }));
+  if (msg.type === "sensor") setLatestSensors((s) => ({ ...s, [msg.payload.zoneId]: msg.payload })); // maintained for forecast & risk map context
       if (msg.type === "prediction") {
         setPredictions((p) => [...p.slice(-60), msg.payload]);
         setRoutes(msg.payload.evacuationRoutes || []);
@@ -97,17 +97,7 @@ export default function Index() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight">Sensor Monitoring</h2>
-                <p className="text-sm text-muted-foreground">Live readings from geotechnical and environmental sensors</p>
-              </div>
-            </div>
-            <SensorPanel zones={latestZones(predictions)} latest={latestSensors} selected={selectedZone} />
-          </CardContent>
-        </Card>
+        {/* Sensor Monitoring moved to /sensors page */}
       </main>
     </div>
   );

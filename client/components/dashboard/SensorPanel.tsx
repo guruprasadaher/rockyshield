@@ -12,7 +12,7 @@ export function SensorPanel({ zones, latest, selected }: Props) {
   return (
     <div className="grid md:grid-cols-2 gap-3">
       {list.map((z) => (
-        <Card key={z.id} className="border">
+        <Card key={z.id} className={"border transition-shadow " + (selected && z.id === selected ? "ring-2 ring-primary shadow-md" : "")}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center justify-between">
               <span>{z.name}</span>
