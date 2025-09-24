@@ -1,5 +1,6 @@
 [build]
-  command = "npm run build:client"
+  # Full build (client + server) so shared code stays in sync.
+  command = "pnpm build"
   functions = "netlify/functions"
   publish = "dist/spa"
 

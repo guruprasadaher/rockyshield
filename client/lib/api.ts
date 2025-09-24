@@ -9,6 +9,28 @@ export function connectStream(onMessage: (msg: StreamMessage) => void) {
   let reconnectTimer: any = null;
   let firstMessageTimer: any = null;
   let receivedAny = false;
+  let errorCount = 0;
+  let pollingInterval: any = null;
+
+  async function startPolling() {
+    if (pollingInterval) return;
+    console.warn('SSE fallback: switching to polling');
+    // poll a subset of endpoints every 6s
+    async function poll() {
+      try {
+        const [prediction, alerts] = await Promise.all([
+          fetchPredict().catch(()=>null),
+          fetchAlerts().catch(()=>[]),
+        ]);
+        if (prediction) onMessage({ type: 'prediction', payload: prediction } as any);
+        if (alerts) alerts.slice(0,5).forEach(a => onMessage({ type: 'alert', payload: a } as any));
+      } catch (e) {
+        // swallow
+      }
+    }
+    poll();
+    pollingInterval = setInterval(poll, 6000);
+  }
 
   function start() {
     if (stopped) return;
@@ -34,6 +56,7 @@ export function connectStream(onMessage: (msg: StreamMessage) => void) {
 
     es.onerror = (err) => {
       console.warn("SSE: connection error", err);
+      errorCount += 1;
       // Attempt graceful close and reconnect with backoff
       try {
         es?.close();
@@ -42,6 +65,9 @@ export function connectStream(onMessage: (msg: StreamMessage) => void) {
       if (!stopped) {
         reconnectTimer = setTimeout(() => start(), backoff);
         backoff = Math.min(30_000, backoff * 1.8);
+      }
+      if (errorCount >= 5) {
+        startPolling();
       }
     };
   }
@@ -70,6 +96,7 @@ export function connectStream(onMessage: (msg: StreamMessage) => void) {
     stopped = true;
     if (reconnectTimer) clearTimeout(reconnectTimer);
     if (firstMessageTimer) clearTimeout(firstMessageTimer);
+    if (pollingInterval) clearInterval(pollingInterval);
     try {
       es?.close();
     } catch (e) {}
