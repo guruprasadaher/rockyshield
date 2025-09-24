@@ -20,6 +20,15 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          charts: ["recharts"],
+          leaflet: ["leaflet"],
+        }
+      }
+    }
   },
   plugins: [react(), expressPlugin()],
   resolve: {

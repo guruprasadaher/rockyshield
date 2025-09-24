@@ -7,8 +7,23 @@
   </head>
 
   <body>
-    <div id="root"></div>
-
-    <script type="module" src="/client/App.tsx"></script>
+    <div id="root"><div style="font-family:system-ui,Segoe UI,Arial;padding:2rem;text-align:center;color:#555">Loading application…</div></div>
+    <noscript><div style="padding:1rem;color:#c00;font-family:monospace">JavaScript is required to run this application.</div></noscript>
+    <script>
+      // Early error hook before React mounts
+      window.addEventListener('error', e => {
+        const el = document.getElementById('root');
+        if (el && !el.dataset.booted) {
+          el.innerHTML = '<pre style="text-align:left;white-space:pre-wrap;background:#fee;border:1px solid #f99;padding:12px;font:12px/1.4 monospace;">Early script error: ' + (e.error?.stack||e.message) + '</pre>';
+        }
+      });
+      window.addEventListener('unhandledrejection', e => {
+        const el = document.getElementById('root');
+        if (el && !el.dataset.booted) {
+          el.innerHTML = '<pre style="text-align:left;white-space:pre-wrap;background:#ffe;border:1px solid #dd8;padding:12px;font:12px/1.4 monospace;">Unhandled promise: ' + (e.reason?.stack||e.reason) + '</pre>';
+        }
+      });
+    </script>
+    <script type="module" src="/client/App.tsx" onload="document.getElementById('root').dataset.booted='1'"></script>
   </body>
 </html>
