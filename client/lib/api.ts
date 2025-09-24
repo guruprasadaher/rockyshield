@@ -7,6 +7,8 @@ export function connectStream(onMessage: (msg: StreamMessage) => void) {
   let stopped = false;
   let backoff = 1000;
   let reconnectTimer: any = null;
+  let firstMessageTimer: any = null;
+  let receivedAny = false;
 
   function start() {
     if (stopped) return;
@@ -20,6 +22,10 @@ export function connectStream(onMessage: (msg: StreamMessage) => void) {
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data) as StreamMessage;
+        if (!receivedAny) {
+          receivedAny = true;
+          if (firstMessageTimer) clearTimeout(firstMessageTimer);
+        }
         onMessage(data);
       } catch (err) {
         console.error("Stream parse error", err, e.data);
@@ -42,9 +48,28 @@ export function connectStream(onMessage: (msg: StreamMessage) => void) {
 
   start();
 
+  // Fallback: if no SSE message within 2500ms, pull bootstrap snapshot once
+  firstMessageTimer = setTimeout(async () => {
+    if (!receivedAny && !stopped) {
+      try {
+        const boot = await fetchBootstrap();
+        // emit synthetic messages to hydrate state
+        onMessage({ type: 'zones', payload: boot.zones } as any);
+        onMessage({ type: 'prediction', payload: boot.prediction } as any);
+        boot.alerts.forEach(a => onMessage({ type: 'alert', payload: a } as any));
+        if (boot.sensors) {
+          onMessage({ type: 'sensor_health', payload: boot.sensors } as any);
+        }
+      } catch (e) {
+        console.warn('Bootstrap fetch failed', e);
+      }
+    }
+  }, 2500);
+
   return () => {
     stopped = true;
     if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (firstMessageTimer) clearTimeout(firstMessageTimer);
     try {
       es?.close();
     } catch (e) {}
@@ -162,4 +187,19 @@ export function indexSensorHealth(snapshots: SensorDeviceSnapshot[]): Record<str
   const map: Record<string, SensorDeviceSnapshot> = {};
   for (const s of snapshots) map[s.sensor_id] = s;
   return map;
+}
+
+// Bootstrap fetch (for serverless / initial hydration when SSE delayed)
+export interface BootstrapResponse {
+  zones: Zone[];
+  prediction: PredictionOutput;
+  alerts: AlertItem[];
+  sensor_stats?: any;
+  sensors?: SensorDeviceSnapshot[];
+}
+
+export async function fetchBootstrap(): Promise<BootstrapResponse> {
+  const res = await fetch('/api/bootstrap');
+  if (!res.ok) throw new Error('Failed bootstrap');
+  return res.json();
 }

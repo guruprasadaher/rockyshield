@@ -79,5 +79,17 @@ export function createServer() {
   app.get("/api/alerts", listAlerts);
   app.post("/api/alerts", sendAlert);
 
+  // Bootstrap snapshot for environments where SSE may be delayed (e.g., serverless)
+  app.get('/api/bootstrap', (_req, res) => {
+    const prediction = store.predict();
+    res.json({
+      zones: store.zones,
+      prediction,
+      alerts: store.alerts.slice(0, 50),
+      sensor_stats: store.getSensorStats?.(),
+      sensors: store.sensors.map(s => store.sensorSnapshot(s))
+    });
+  });
+
   return app;
 }
