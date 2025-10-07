@@ -13,6 +13,7 @@ import type { CreateSiteRequest, Zone } from "@shared/api";
 import { store } from "./data/store";
 import { ingestDEM, ingestDrone, ingestEnv, ingestGeotech, ingestWorker } from "./routes/ingest";
 import { listAlerts, sendAlert } from "./routes/alerts";
+import { streamBroadcast } from "./routes/stream";
 
 export function createServer() {
   const app = express();
@@ -79,6 +80,47 @@ export function createServer() {
   app.get("/api/alerts", listAlerts);
   app.post("/api/alerts", sendAlert);
 
+  // Thresholds configuration
+  app.get('/api/thresholds', (_req, res) => {
+    res.json(store.getThresholds());
+  });
+  app.post('/api/thresholds', (req, res) => {
+    try {
+      const { high, medium } = req.body || {};
+      const updated = store.setThresholds({ high, medium });
+      // Optionally emit a new prediction snapshot so UI reflects changes quickly
+      const prediction = store.predict();
+      streamBroadcast({ type: 'prediction', payload: prediction } as any);
+      res.json(updated);
+    } catch (e:any) {
+      res.status(400).json({ error: e.message || 'Invalid thresholds' });
+    }
+  });
+
+  // Mock drill: create a simulated high alert for a zone
+  app.post('/api/mock-drill', (req, res) => {
+    const { zoneId, message } = req.body || {};
+    const z = store.zones.find(zz => zz.id === zoneId) || store.zones[0];
+    if (!z) return res.status(400).json({ error: 'No zones available' });
+    const alert = {
+      id: `mock-${z.id}-${Date.now()}`,
+      zoneId: z.id,
+      level: 'high' as const,
+      message: message || `${z.name}: Mock drill – evacuate now` ,
+      actions: store.actionsForRisk('high'),
+      timestamp: Date.now(),
+    };
+    store.alerts.unshift(alert);
+    streamBroadcast({ type: 'alert', payload: alert } as any);
+    store.logAlertEvent(alert);
+    // Also ensure prediction reflects a high-risk state for this zone briefly
+    // by nudging its crack index temporarily
+    store.crackIndex[z.id] = Math.max(store.crackIndex[z.id] ?? 0.1, 0.85);
+    const prediction = store.predict();
+    streamBroadcast({ type: 'prediction', payload: prediction } as any);
+    res.json({ ok: true, alert });
+  });
+
   // Bootstrap snapshot for environments where SSE may be delayed (e.g., serverless)
   app.get('/api/bootstrap', (_req, res) => {
     const prediction = store.predict();
@@ -87,6 +129,7 @@ export function createServer() {
       prediction,
       alerts: store.alerts.slice(0, 50),
       sensor_stats: store.getSensorStats?.(),
+      thresholds: store.getThresholds?.(),
       sensors: store.sensors.map(s => store.sensorSnapshot(s))
     });
   });

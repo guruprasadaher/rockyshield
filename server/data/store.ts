@@ -12,6 +12,8 @@ class Store {
   safeExits: SafeExit[] = [];
   workers: Record<string, WorkerTag> = {};
   sensors: SensorDevice[] = [];
+  // Configurable thresholds for risk classification
+  thresholds = { high: 0.7, medium: 0.4 };
 
   seed() {
     if (this.zones.length) return;
@@ -118,7 +120,8 @@ class Store {
       const score = 3.0 * fSlope + 2.5 * fCrack + 2.2 * fDisp + 1.8 * fRain + 1.5 * fPore + 1.2 * fVib - 2.2;
       const probability = 1 / (1 + Math.exp(-score));
 
-      const risk: RiskLevel = probability > 0.7 ? "high" : probability > 0.4 ? "medium" : "low";
+  const { high, medium } = this.thresholds;
+  const risk: RiskLevel = probability > high ? "high" : probability > medium ? "medium" : "low";
       const recommendedActions = this.actionsForRisk(risk);
 
       return { ...z, probability, risk, recommendedActions };
@@ -128,6 +131,23 @@ class Store {
     const evacuationRoutes = this.computeEvacuationRoutes(zones);
     const out: PredictionOutput = { timestamp: now, zones, flags: { barricade }, evacuationRoutes };
     return out;
+  }
+
+  getThresholds() {
+    return { ...this.thresholds };
+  }
+
+  setThresholds(partial: { high?: number; medium?: number }) {
+    const next = { ...this.thresholds, ...partial };
+    // Validate ranges: 0 < medium < high < 1
+    if (
+      typeof next.high !== 'number' || typeof next.medium !== 'number' ||
+      !(next.medium > 0 && next.high < 1 && next.medium < next.high)
+    ) {
+      throw new Error('Invalid thresholds: require 0 < medium < high < 1');
+    }
+    this.thresholds = next;
+    return this.getThresholds();
   }
 
   updateWorker(tag: WorkerTag) {

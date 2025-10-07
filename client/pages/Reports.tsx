@@ -92,13 +92,13 @@ export default function Reports() {
   }
 
   return (
-    <div className="px-6 py-6 space-y-6">
+    <div className="px-6 py-6 flex flex-col h-full max-h-screen">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Reports & Compliance</h1>
         <p className="text-sm text-muted-foreground">Immutable log of high-risk events for audit, investigation and response analytics.</p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 mb-6">
         <Card>
           <CardContent className="pt-4">
             <div className="grid sm:grid-cols-4 gap-4 text-center">
@@ -127,16 +127,21 @@ export default function Reports() {
                 </div>
               </div>
             ) : <div className="text-xs text-muted-foreground">Loading sensor stats…</div>}
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2 flex-wrap">
               <Button size="sm" variant="outline" onClick={() => refreshSensors()}>Refresh</Button>
               <Button size="sm" variant="secondary" onClick={() => downloadSensorsCsv()}>Export Sensors CSV</Button>
+              <Button size="sm" variant="ghost" asChild>
+                <a href="/sensors" className="text-xs">Open Sensors Page →</a>
+              </Button>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardContent className="pt-4 space-y-4">
+      <div className="flex-1 min-h-0">
+        <Card className="h-full flex flex-col">
+          <CardContent className="pt-4 flex flex-col h-full">
+            <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2 custom-scroll-thin" style={{maxHeight:'60vh'}}>
           <div className="flex flex-wrap gap-3 items-end">
             <div>
               <label className="text-xs font-medium">Zone</label>
@@ -220,40 +225,11 @@ export default function Reports() {
               </tbody>
             </table>
           </div>
-          <div className="mt-10">
-            <h2 className="text-sm font-semibold mb-3">Sensors Inventory</h2>
-            <div className="overflow-x-auto border rounded-md">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr>
-                    {['sensor_id','type','zone_id','status','last_heartbeat','uptime_pct'].map(col => (
-                      <th key={col} onClick={() => toggleSensorSort(col as keyof SensorListItem)} className="px-3 py-2 text-left text-[11px] uppercase tracking-wide font-semibold cursor-pointer select-none">
-                        {col}
-                        {sensorSort.key === col && <span className="ml-1 text-[10px]">{sensorSort.dir === 'asc' ? '▲' : '▼'}</span>}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedSensors.map(s => (
-                    <tr key={s.sensor_id} className="border-b last:border-b-0 hover:bg-muted/30">
-                      <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{s.sensor_id}</td>
-                      <td className="px-3 py-2 text-xs">{s.type}</td>
-                      <td className="px-3 py-2 text-xs">{s.zone_id}</td>
-                      <td className="px-3 py-2 text-xs"><span className={sensorStatusBadge(s.status)}>{s.status}</span></td>
-                      <td className="px-3 py-2 text-xs whitespace-nowrap">{new Date(s.last_heartbeat).toLocaleTimeString()}</td>
-                      <td className="px-3 py-2 text-xs">{(s.uptime_pct*100).toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                  {sortedSensors.length === 0 && (
-                    <tr><td colSpan={6} className="px-3 py-6 text-center text-xs text-muted-foreground">No sensors.</td></tr>
-                  )}
-                </tbody>
-              </table>
+          {/* Sensors inventory moved to dedicated Sensors page */}
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

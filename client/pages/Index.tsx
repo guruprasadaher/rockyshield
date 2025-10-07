@@ -61,7 +61,7 @@ export default function Index() {
                   <Button variant="outline" size="sm" onClick={() => setSelectedZone(null)}>All Zones</Button>
                 </div>
               </div>
-              <RiskMap zones={latestZones(predictions)} routes={routes} workers={Object.values(workers)} onZoneClick={(id) => setSelectedZone(id)} />
+              <RiskMap zones={latestZones(predictions)} routes={routes} workers={Object.values(workers)} selectedZoneId={selectedZone} onZoneClick={(id) => setSelectedZone(id)} />
             </CardContent>
           </Card>
           <div className="space-y-4">

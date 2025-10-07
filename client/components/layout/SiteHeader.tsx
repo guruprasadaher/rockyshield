@@ -10,6 +10,7 @@ export function SiteHeader() {
   const location = useLocation();
   const nav = [
     { to: "/", label: "Dashboard" },
+    { to: "/alerts-evac", label: "Alerts & Evac" },
     { to: "/history", label: "History" },
     { to: "/sensors", label: "Sensors" },
     { to: "/supervisor", label: "Supervisor" },
@@ -46,9 +47,11 @@ export function SiteHeader() {
   return (
     <aside className="w-56 shrink-0 h-screen sticky top-0 bg-white dark:bg-neutral-900 border-r flex flex-col">
       <div className="flex items-center gap-2 px-4 h-14 border-b">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-md bg-gradient-to-br from-primary to-teal-500 shadow" />
-          <span className="font-extrabold tracking-tight text-lg">MineKavach</span>
+        <Link to="/" className="flex items-center gap-2 group">
+          <img src="/logo.svg" alt="MineKavach Logo" className="h-8 w-8 rounded-md shadow-sm ring-1 ring-black/5 dark:ring-white/10 group-hover:scale-[1.03] transition-transform" />
+          <span className="font-extrabold tracking-tight text-lg bg-gradient-to-r from-primary via-teal-500 to-emerald-500 bg-clip-text text-transparent">
+            MineKavach
+          </span>
         </Link>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 space-y-1 px-3 text-sm">

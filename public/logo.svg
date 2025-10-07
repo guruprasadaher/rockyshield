@@ -1,0 +1,18 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160' fill='none'>
+  <defs>
+    <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+      <stop offset='0%' stop-color='#2563eb'/>
+      <stop offset='50%' stop-color='#0d9488'/>
+      <stop offset='100%' stop-color='#16a34a'/>
+    </linearGradient>
+  </defs>
+  <rect x='8' y='8' width='144' height='144' rx='28' fill='url(#g)' />
+  <!-- Stylized shield / slope lines -->
+  <path d='M80 38 L118 50 V82c0 28-18 44-38 52-20-8-38-24-38-52V50L80 38Z' stroke='white' stroke-width='6' stroke-linejoin='round' fill='none'/>
+  <path d='M62 74c8-10 22-10 30 0 5 6 12 6 18 0' stroke='white' stroke-width='6' stroke-linecap='round' fill='none' opacity='.85'/>
+  <path d='M58 92c10-14 34-14 44 0' stroke='white' stroke-width='6' stroke-linecap='round' fill='none' opacity='.55'/>
+  <!-- Subtle inner highlight -->
+  <path d='M80 44 L112 54 V82c0 22-14 36-32 44-18-8-32-22-32-44V54L80 44Z' fill='white' opacity='.08'/>
+  <!-- MK Monogram -->
+  <text x='80' y='112' font-family='system-ui,Segoe UI,Roboto' font-size='44' font-weight='700' text-anchor='middle' fill='white'>MK</text>
+</svg>

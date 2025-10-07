@@ -197,7 +197,28 @@ export async function fetchSensors(): Promise<SensorListItem[]> {
 export async function fetchSensorStats(): Promise<SensorStatsResponse> {
   const res = await fetch('/api/sensor-stats');
   if (!res.ok) throw new Error('Failed to fetch sensor stats');
-  return res.json();
+  const raw = await res.json();
+  // Server currently returns: { total, active, faulty, maintenance, average_uptime }
+  // Normalize into SensorStatsResponse shape expected by UI: { total, byStatus, averageUptimePct }
+  if (raw && typeof raw === 'object' && 'total' in raw) {
+    const active = raw.active ?? 0;
+    const faulty = raw.faulty ?? 0;
+    const maintenance = raw.maintenance ?? 0;
+    const inactive = Math.max(0, (raw.total ?? 0) - (active + faulty + maintenance));
+    const averageUptimePct = raw.averageUptimePct ?? raw.average_uptime ?? 0; // server uses average_uptime
+    return {
+      total: raw.total ?? 0,
+      byStatus: {
+        Active: active,
+        Faulty: faulty,
+        Maintenance: maintenance,
+        Inactive: inactive,
+      },
+      averageUptimePct,
+    };
+  }
+  // Fallback (already correct shape or unexpected)
+  return raw as SensorStatsResponse;
 }
 
 export function downloadSensorsCsv() {
@@ -222,11 +243,39 @@ export interface BootstrapResponse {
   prediction: PredictionOutput;
   alerts: AlertItem[];
   sensor_stats?: any;
+  thresholds?: { high: number; medium: number };
   sensors?: SensorDeviceSnapshot[];
 }
 
 export async function fetchBootstrap(): Promise<BootstrapResponse> {
   const res = await fetch('/api/bootstrap');
   if (!res.ok) throw new Error('Failed bootstrap');
+  return res.json();
+}
+
+// ==== Configuration & Simulation APIs ====
+export async function getThresholds(): Promise<{ high: number; medium: number }> {
+  const res = await fetch('/api/thresholds');
+  if (!res.ok) throw new Error('Failed to fetch thresholds');
+  return res.json();
+}
+
+export async function setThresholds(payload: { high?: number; medium?: number }): Promise<{ high: number; medium: number }> {
+  const res = await fetch('/api/thresholds', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) throw new Error('Failed to update thresholds');
+  return res.json();
+}
+
+export async function triggerMockDrill(zoneId: string, message?: string): Promise<{ ok: boolean }> {
+  const res = await fetch('/api/mock-drill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ zoneId, message })
+  });
+  if (!res.ok) throw new Error('Failed to trigger mock drill');
   return res.json();
 }

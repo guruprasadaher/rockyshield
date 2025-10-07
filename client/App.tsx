@@ -14,6 +14,7 @@ import History from "./pages/History";
 import Sensors from "./pages/Sensors";
 import Supervisor from "./pages/Supervisor";
 import Reports from "./pages/Reports";
+import AlertsEvac from "./pages/AlertsEvac";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 const queryClient = new QueryClient();
@@ -64,6 +65,7 @@ const App = () => (
                 <Route path="/sensors" element={<Sensors />} />
                 <Route path="/supervisor" element={<Supervisor />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/alerts-evac" element={<AlertsEvac />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
